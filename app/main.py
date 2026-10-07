@@ -5,6 +5,8 @@ from app import models
 from app.api import files
 from app.database import Base, engine
 
+from app import docs_page, models
+
 Base.metadata.create_all(bind=engine)
 
 tags_metadata = [
@@ -21,6 +23,7 @@ tags_metadata = [
 app = FastAPI(
     title="Geospatial File Measurement API",
     version="1.0.0",
+    docs_url=None,
     description=(
         "Upload a KML file or a zipped Shapefile and get back the area of each polygon "
         "and the length of each line, in metres.\n\n"
@@ -35,6 +38,8 @@ app = FastAPI(
 )
 
 app.include_router(files.router)
+app.include_router(docs_page.router)
+
 
 
 def custom_openapi():

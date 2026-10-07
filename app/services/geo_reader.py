@@ -2,13 +2,24 @@ import json
 
 import geopandas as gpd
 import pandas as pd
+import pyogrio
 from fastapi import HTTPException
 from shapely.geometry import mapping
+
+def _read_layers(path):
+    names = pyogrio.list_layers(path)[:, 0]
+    frames = [gpd.read_file(path, layer=name) for name in names]
+    if not frames:
+        raise ValueError("No layers found in file")
+    frames = [f for f in frames if len(f) > 0] or frames[:1]
+    if len(frames) == 1:
+        return frames[0]
+    return gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), crs=frames[0].crs)
 
 
 def read_geodata(path):
     try:
-        gdf = gpd.read_file(path)
+        gdf = _read_layers(path)
     except Exception as exc:
         raise HTTPException(
             status_code=422, detail=f"Could not read geospatial data: {exc}"

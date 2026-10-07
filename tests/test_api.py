@@ -97,3 +97,16 @@ def test_zip_without_shp_rejected(client, tmp_path):
 
 def test_unknown_file_id_returns_404(client):
     assert client.get("/api/files/doesnotexist/").status_code == 404
+
+def test_kml_with_folders_reads_all_features(client, tmp_path):
+    kml = tmp_path / "folders.kml"
+    kml.write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>'
+        '<Folder><name>A</name><Placemark><name>p1</name><Point><coordinates>77.59,12.97,0</coordinates></Point></Placemark></Folder>'
+        '<Folder><name>B</name><Placemark><name>p2</name><Point><coordinates>77.60,12.98,0</coordinates></Point></Placemark></Folder>'
+        '</Document></kml>'
+    )
+    resp = upload(client, kml)
+    assert resp.status_code == 201
+    assert resp.json()["feature_count"] == 2

@@ -6,15 +6,16 @@ For polygons it returns **area**, and for lines it returns **length**. Measureme
 
 ## Features
 
-- Upload a zipped Shapefile or a KML file
+- Upload a zipped Shapefile or a KML file (KML files with folders are supported)
 - Read each feature with its properties and geometry (as GeoJSON)
 - Area for Polygon and MultiPolygon, length for LineString and MultiLineString
 - UTM zone chosen automatically for each feature
 - Paginated measurements API
 - Status tracking (`PROCESSING`, `COMPLETED`, `FAILED`)
 - Basic protection against unsafe ZIP files and oversized uploads
+- Interactive API docs page at `/docs`
 - Docker support
-- 16 automated tests
+- 17 automated tests
 
 ## Tech Stack
 
@@ -36,10 +37,12 @@ cd geo-measurement-api
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
-The API runs at `http://127.0.0.1:8000` and the Swagger docs are at `http://127.0.0.1:8000/docs`.
+The API runs at `http://127.0.0.1:8000`.
+
+Interactive docs are at `http://127.0.0.1:8000/docs`, where each endpoint can be tried from the browser. A read-only version is at `/redoc`.
 
 ## Running with Docker
 
@@ -52,7 +55,7 @@ The database and uploaded files are stored in `./data`, so they are kept when th
 ## Running Tests
 
 ```bash
-pytest -v
+python -m pytest -v
 ```
 
 ---
@@ -99,7 +102,11 @@ I kept these files as `FAILED` instead of rejecting them, so the reason can stil
 
 ## Get File Information
 
-`GET /api/files/{id}/` returns the same fields as the upload response. An unknown id returns `404`.
+`GET /api/files/{id}/` returns the same fields as the upload response. Use the id exactly as returned, without quotes. An unknown id returns `404`.
+
+```bash
+curl http://127.0.0.1:8000/api/files/ff765d7325ee/
+```
 
 ## Get Measurements
 
@@ -151,7 +158,7 @@ For Point features no measurement is calculated:
 }
 ```
 
-If the file status is not `COMPLETED`, this endpoint returns `409` with the reason.
+If the file status is not `COMPLETED`, this endpoint returns `409` with the reason. An unknown id returns `404`.
 
 ---
 
@@ -160,11 +167,12 @@ If the file status is not `COMPLETED`, this endpoint returns `409` with the reas
 ```text
 .
 ├── app/
-│   ├── main.py            app creation, router, table creation
+│   ├── main.py            app creation, routers, table creation
 │   ├── config.py          paths, size limits, allowed extensions
 │   ├── database.py        database engine and session
 │   ├── models.py          UploadedFile and Feature tables
 │   ├── schemas.py         response models
+│   ├── docs_page.py       styled /docs page
 │   ├── api/
 │   │   └── files.py       the three endpoints
 │   └── services/
@@ -192,7 +200,7 @@ If the file status is not `COMPLETED`, this endpoint returns `409` with the reas
 3. For ZIP files: check the declared uncompressed size, check that every path stays inside the target folder, then extract.
 4. Find the `.shp` file and confirm `.shx` and `.dbf` exist.
 5. Create a database record with status `PROCESSING`.
-6. Read the file with GeoPandas and measure each feature.
+6. Read the file with GeoPandas (every layer, so KML folders are included) and measure each feature.
 7. Save all features in one commit and set the status to `COMPLETED`.
 
 If anything fails during steps 5 to 7, the status becomes `FAILED` and the error is stored.
@@ -250,17 +258,18 @@ These are handled in the code:
 - Unsupported geometry types (null measurements plus a note)
 - 3D coordinates from KML (kept in the stored geometry, ignored when measuring)
 - `NaN` / `NaT` attribute values (converted to null before saving)
+- KML files with folders (each folder is a separate layer, and all layers are read)
 - Invalid ZIPs, unsafe ZIP paths, ZIPs with no Shapefile, oversized files
 
-Covered by automated tests: missing `.prj`, empty geometry, repaired invalid geometry, unsupported type (Point), wrong extension, invalid ZIP, unsafe ZIP path, ZIP without a Shapefile. The others were checked by hand or are not tested yet.
+Covered by automated tests: missing `.prj`, empty geometry, repaired invalid geometry, unsupported type (Point), wrong extension, invalid ZIP, unsafe ZIP path, ZIP without a Shapefile, KML with folders. The others were checked by hand or are not tested yet.
 
 # Tests
 
-16 tests in total.
+17 tests in total.
 
 **Measurement tests (6):** polygon area compared with a geodesic calculation, line length, Point has no measurement, empty geometry, self-intersecting polygon is repaired, UTM zone selection (north and south).
 
-**API tests (10):** KML upload and read back, measurements for a KML, pagination, Shapefile upload, missing `.prj` marked `FAILED` (and measurements return `409`), wrong extension, invalid ZIP, ZIP slip, ZIP without a Shapefile, unknown file id.
+**API tests (11):** KML upload and read back, measurements for a KML, pagination, Shapefile upload, missing `.prj` marked `FAILED` (and measurements return `409`), wrong extension, invalid ZIP, ZIP slip, ZIP without a Shapefile, unknown file id, KML with folders reads all features.
 
 Each test uses its own temporary database and upload folder.
 
@@ -271,7 +280,6 @@ Each test uses its own temporary database and upload folder.
 - If a ZIP contains several Shapefiles, only the first one is processed.
 - A feature that crosses a UTM zone boundary is measured in the zone of its centre, which adds a small error.
 - Processing is synchronous.
-- Only the first KML layer is read, so features in other KML folders are skipped. *(delete this line if your two-folder test printed 2)*
 - Latitudes outside -80 to 84 are not measured.
 
 # What I Learned
@@ -281,6 +289,7 @@ Each test uses its own temporary database and upload folder.
 - How to pick a UTM zone from a location.
 - ZIP slip and ZIP bombs, and how to guard against them.
 - `NaN` and `NaT` values from pandas break JSON, so they must be cleaned before saving.
+- A KML folder is read as a separate layer, so reading only the default layer silently drops features. I found this by testing a file with two folders.
 - Keeping the endpoints thin and putting the logic in a services layer made testing easier.
 
 # Future Improvements
@@ -290,5 +299,9 @@ Each test uses its own temporary database and upload folder.
 - A local equal-area projection for more accurate areas
 - Handling features that cross UTM zones, and polar regions (UPS)
 - GeoJSON and GeoPackage support
-- Reading all KML layers and all Shapefiles inside a ZIP
+- Reading all Shapefiles inside a ZIP
 - Authentication and rate limiting
+
+## License
+
+This project is for learning and development purposes.

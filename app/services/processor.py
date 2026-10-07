@@ -8,7 +8,6 @@ from app.services.measurement import measure_feature
 
 
 def process_file(db: Session, record: UploadedFile, source_path: Path) -> None:
-    """Read the file, measure each feature and save the results."""
     try:
         crs, features = read_geodata(source_path)
 
@@ -29,7 +28,6 @@ def process_file(db: Session, record: UploadedFile, source_path: Path) -> None:
                 )
             )
 
-        # save everything together, so a file is never half stored
         db.add_all(rows)
         record.crs = crs
         record.feature_count = len(rows)
@@ -38,7 +36,6 @@ def process_file(db: Session, record: UploadedFile, source_path: Path) -> None:
         db.rollback()
         record = db.get(UploadedFile, record.id)
         record.status = "FAILED"
-        # HTTPException keeps its message in .detail
         record.error_message = str(getattr(exc, "detail", exc))
 
     db.commit()

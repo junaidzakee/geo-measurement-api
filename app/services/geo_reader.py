@@ -7,7 +7,6 @@ from shapely.geometry import mapping
 
 
 def read_geodata(path):
-    """Read a .shp or .kml file. Returns (crs_string, list_of_features)."""
     try:
         gdf = gpd.read_file(path)
     except Exception as exc:
@@ -32,7 +31,6 @@ def read_geodata(path):
             for key, value in row.items()
             if key != "geometry"
         }
-        # drop empty fields, KML adds a lot of them
         properties = {k: v for k, v in properties.items() if v is not None}
 
         if geom is None or geom.is_empty:
@@ -61,7 +59,6 @@ def read_geodata(path):
 
 
 def _clean_value(value):
-    """Make a value safe to store as JSON (NaN/NaT -> None, numpy -> python)."""
     if value is None:
         return None
     try:
@@ -69,6 +66,6 @@ def _clean_value(value):
             return None
     except (TypeError, ValueError):
         pass
-    if hasattr(value, "item"):  # numpy number -> plain python number
+    if hasattr(value, "item"):
         value = value.item()
     return json.loads(json.dumps(value, default=str))

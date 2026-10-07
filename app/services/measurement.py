@@ -9,7 +9,6 @@ LINE_TYPES = {"LineString", "MultiLineString"}
 
 
 def pick_utm_crs(lon, lat):
-    """UTM zone for a lon/lat point (EPSG:326xx north, 327xx south)."""
     zone = int((lon + 180) // 6) + 1
     zone = min(max(zone, 1), 60)
     base = 32600 if lat >= 0 else 32700
@@ -17,10 +16,6 @@ def pick_utm_crs(lon, lat):
 
 
 def measure_feature(geom, source_crs):
-    """
-    Returns a dict with area_sq_m, length_m, projected_crs and note.
-    Anything we can't measure gets None values and a note, never an exception.
-    """
     result = {
         "area_sq_m": None,
         "length_m": None,
@@ -33,7 +28,7 @@ def measure_feature(geom, source_crs):
         result["note"] = "Empty geometry, nothing to measure"
         return result
 
-    geom = force_2d(geom)  # KML often carries a z value we don't need
+    geom = force_2d(geom)
 
     if not geom.is_valid:
         geom = make_valid(geom)
@@ -45,7 +40,6 @@ def measure_feature(geom, source_crs):
         result["note"] = "; ".join(notes)
         return result
 
-    # lon/lat of the centre, used only to choose the UTM zone
     to_wgs84 = Transformer.from_crs(source_crs, WGS84, always_xy=True)
     centre = transform(to_wgs84.transform, geom).centroid
     lon, lat = centre.x, centre.y

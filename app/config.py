@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-# in Docker this points at a mounted folder, locally it defaults to the project root
 DATA_DIR = Path(os.getenv("DATA_DIR", BASE_DIR))
 UPLOAD_DIR = DATA_DIR / "uploads"
 DATABASE_URL = f"sqlite:///{DATA_DIR / 'geo_api.db'}"

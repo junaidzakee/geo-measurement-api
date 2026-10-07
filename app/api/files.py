@@ -1,6 +1,6 @@
 import shutil
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import UPLOAD_DIR
@@ -12,6 +12,8 @@ from app.services.processor import process_file
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
+FILE_ID_HELP = "File id from the upload response, without quotes"
+
 
 def get_file_or_404(db: Session, file_id: str) -> UploadedFile:
     record = db.get(UploadedFile, file_id)
@@ -20,7 +22,18 @@ def get_file_or_404(db: Session, file_id: str) -> UploadedFile:
     return record
 
 
-@router.post("/", response_model=FileInfo, status_code=201)
+@router.post(
+    "/",
+    response_model=FileInfo,
+    status_code=201,
+    summary="Upload a KML or zipped Shapefile",
+    description=(
+        "Send a `.kml` file or a `.zip` containing a Shapefile. The file is read and every "
+        "feature is measured. The response shows the file `id` and its `status`.\n\n"
+        "If the file is valid but cannot be processed (for example a Shapefile with no `.prj`), "
+        "it is saved with status `FAILED` and an `error_message`."
+    ),
+)
 def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
     ext = file_handler.check_extension(file.filename or "")
     file_id = new_id()
@@ -33,7 +46,6 @@ def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
         else:
             source_path = saved_path
     except HTTPException:
-        # don't leave half-saved files behind
         shutil.rmtree(UPLOAD_DIR / file_id, ignore_errors=True)
         raise
 
@@ -46,16 +58,32 @@ def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
     return record
 
 
-@router.get("/{file_id}/", response_model=FileInfo)
-def get_file(file_id: str, db: Session = Depends(get_db)):
+@router.get(
+    "/{file_id}/",
+    response_model=FileInfo,
+    summary="Get details of an uploaded file",
+    description="Returns the filename, CRS, number of features and processing status.",
+)
+def get_file(
+    file_id: str = Path(description=FILE_ID_HELP),
+    db: Session = Depends(get_db),
+):
     return get_file_or_404(db, file_id)
 
 
-@router.get("/{file_id}/measurements/", response_model=MeasurementsResponse)
+@router.get(
+    "/{file_id}/measurements/",
+    response_model=MeasurementsResponse,
+    summary="Get area and length for each feature",
+    description=(
+        "Polygons get an area, lines get a length, and points have no measurement. "
+        "Use `limit` and `offset` to page through large files."
+    ),
+)
 def get_measurements(
-    file_id: str,
-    limit: int = Query(100, ge=1, le=1000),
-    offset: int = Query(0, ge=0),
+    file_id: str = Path(description=FILE_ID_HELP),
+    limit: int = Query(100, ge=1, le=1000, description="How many features to return"),
+    offset: int = Query(0, ge=0, description="How many features to skip"),
     db: Session = Depends(get_db),
 ):
     record = get_file_or_404(db, file_id)

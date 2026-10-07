@@ -40,5 +40,5 @@ def test_self_intersecting_polygon_is_repaired():
 
 
 def test_utm_zone_selection():
-    assert pick_utm_crs(77.6, 12.9).to_epsg() == 32643   # India, north
-    assert pick_utm_crs(151.2, -33.9).to_epsg() == 32756  # Sydney, south
+    assert pick_utm_crs(77.6, 12.9).to_epsg() == 32643
+    assert pick_utm_crs(151.2, -33.9).to_epsg() == 32756

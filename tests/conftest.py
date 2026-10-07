@@ -11,11 +11,9 @@ from app.services import file_handler
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
-    # temporary upload folder
     monkeypatch.setattr(file_handler, "UPLOAD_DIR", tmp_path / "uploads")
     monkeypatch.setattr(files_module, "UPLOAD_DIR", tmp_path / "uploads")
 
-    # temporary database
     engine = create_engine(
         f"sqlite:///{tmp_path / 'test.db'}",
         connect_args={"check_same_thread": False},

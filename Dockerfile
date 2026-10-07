@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
-# keep uploads and the database in one folder that can be mounted
+
 RUN mkdir -p /code/data
 ENV DATA_DIR=/code/data
 

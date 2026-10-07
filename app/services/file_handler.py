@@ -26,13 +26,11 @@ def save_upload(upload: UploadFile, file_id: str) -> Path:
     folder = UPLOAD_DIR / file_id
     folder.mkdir(parents=True, exist_ok=True)
 
-    # .name drops any folder part a client might send in the filename
     dest = folder / Path(upload.filename).name
 
     size = 0
     try:
         with open(dest, "wb") as out:
-            # read in 1 MB chunks so a big file never sits fully in memory
             while chunk := upload.file.read(1024 * 1024):
                 size += len(chunk)
                 if size > MAX_UPLOAD_BYTES:
@@ -58,11 +56,9 @@ def extract_zip(zip_path: Path) -> Path:
         with zipfile.ZipFile(zip_path) as zf:
             members = zf.infolist()
 
-            # guard against zip bombs
             if sum(m.file_size for m in members) > MAX_UNZIPPED_BYTES:
                 raise HTTPException(status_code=413, detail="Zip is too large when extracted")
 
-            # guard against zip slip (names like ../../something)
             for m in members:
                 if not (target / m.filename).resolve().is_relative_to(target_root):
                     raise HTTPException(status_code=400, detail="Zip contains an unsafe path")

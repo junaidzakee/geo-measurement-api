@@ -20,7 +20,7 @@ class UploadedFile(Base):
 
     id = Column(String, primary_key=True, default=new_id)
     filename = Column(String, nullable=False)
-    status = Column(String, default="PROCESSING")  # PROCESSING, COMPLETED or FAILED
+    status = Column(String, default="PROCESSING")
     crs = Column(String, nullable=True)
     feature_count = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
@@ -38,11 +38,11 @@ class Feature(Base):
     file_id = Column(String, ForeignKey("uploaded_files.id"), nullable=False, index=True)
     feature_index = Column(Integer, nullable=False)
     geometry_type = Column(String, nullable=True)
-    geometry = Column(JSON, nullable=True)      # stored as GeoJSON
+    geometry = Column(JSON, nullable=True)
     properties = Column(JSON, nullable=True)
     area_sq_m = Column(Float, nullable=True)
     length_m = Column(Float, nullable=True)
-    projected_crs = Column(String, nullable=True)  # CRS used for the measurement
-    note = Column(String, nullable=True)           # e.g. "not applicable for Point"
+    projected_crs = Column(String, nullable=True)
+    note = Column(String, nullable=True)
 
     file = relationship("UploadedFile", back_populates="features")

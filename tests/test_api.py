@@ -63,7 +63,6 @@ def test_shapefile_without_prj_is_marked_failed(client, tmp_path):
     assert resp.json()["status"] == "FAILED"
     assert "CRS" in resp.json()["error_message"]
 
-    # measurements are not available for a failed file
     file_id = resp.json()["id"]
     assert client.get(f"/api/files/{file_id}/measurements/").status_code == 409
 
